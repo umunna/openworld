@@ -3,30 +3,16 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { ClockPanel } from "./clock-panel";
 import { Grass } from "./grass";
+import type { TimeValues } from "@/lib/types";
+import { INITIAL_TIME } from "@/lib/types";
 
-function pad(n: number, d: number) {
+function pad(n: number, d: number): string {
   return String(n).padStart(d, "0");
 }
 
-interface TimeState {
-  days: number;
-  hours: string;
-  minutes: string;
-  seconds: string;
-  ms: string;
-}
-
-const INITIAL_TIME: TimeState = {
-  days: 0,
-  hours: "00",
-  minutes: "00",
-  seconds: "00",
-  ms: "00",
-};
-
 export function Sim() {
-  const [realTime, setRealTime] = useState<TimeState>(INITIAL_TIME);
-  const [pseudoTime, setPseudoTime] = useState<TimeState>(INITIAL_TIME);
+  const [realTime, setRealTime] = useState<TimeValues>(INITIAL_TIME);
+  const [pseudoTime, setPseudoTime] = useState<TimeValues>(INITIAL_TIME);
   const [speed, setSpeed] = useState(10);
 
   const pseudoElapsedRef = useRef(0);
@@ -45,7 +31,7 @@ export function Sim() {
     const diff = now.getTime() - yearStart.getTime();
 
     setRealTime({
-      days: Math.floor(diff / 86400000),
+      days: String(Math.floor(diff / 86400000)),
       hours: pad(now.getHours(), 2),
       minutes: pad(now.getMinutes(), 2),
       seconds: pad(now.getSeconds(), 2),
@@ -63,7 +49,7 @@ export function Sim() {
     const ms = Math.floor((pseudoElapsedRef.current % 1000) / 10);
 
     setPseudoTime({
-      days: Math.floor(totalSec / 86400),
+      days: String(Math.floor(totalSec / 86400)),
       hours: pad(Math.floor(totalSec / 3600) % 24, 2),
       minutes: pad(Math.floor(totalSec / 60) % 60, 2),
       seconds: pad(totalSec % 60, 2),
@@ -117,10 +103,11 @@ export function Sim() {
       />
 
       {/* Title */}
-      <h1 className="z-[2] mt-6 text-2xl font-bold uppercase tracking-[0.15em] text-green-950 sm:mt-8 sm:text-3xl md:mt-10 md:text-4xl"
+      <h1
+        className="z-[2] mt-6 text-2xl font-bold uppercase tracking-[0.15em] text-green-950 sm:mt-8 sm:text-3xl md:mt-10 md:text-4xl"
         style={{ textShadow: "0 2px 8px rgba(255,255,255,0.3)" }}
       >
-        Sim
+        {"Sim"}
       </h1>
 
       {/* Clock panels */}
@@ -129,14 +116,10 @@ export function Sim() {
         <ClockPanel label="Real Time" time={realTime} variant="realtime" />
 
         {/* Pseudo Time */}
-        <ClockPanel
-          label="Pseudo Time"
-          time={pseudoTime}
-          variant="pseudotime"
-        >
+        <ClockPanel label="Pseudo Time" time={pseudoTime} variant="pseudotime">
           <div className="mt-1 flex items-center gap-2.5">
             <span className="text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-green-950/60 sm:text-[0.7rem]">
-              Speed
+              {"Speed"}
             </span>
             <input
               type="range"
@@ -148,7 +131,7 @@ export function Sim() {
               aria-label="Speed multiplier"
             />
             <span className="min-w-[28px] text-center text-xs font-bold text-green-950 sm:text-sm">
-              {speed}x
+              {speed}{"x"}
             </span>
           </div>
         </ClockPanel>

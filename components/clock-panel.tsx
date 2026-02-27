@@ -1,12 +1,6 @@
 "use client";
 
-interface TimeValues {
-  days: number;
-  hours: string;
-  minutes: string;
-  seconds: string;
-  ms: string;
-}
+import type { TimeValues } from "@/lib/types";
 
 interface ClockPanelProps {
   label: string;
@@ -15,8 +9,8 @@ interface ClockPanelProps {
   children?: React.ReactNode;
 }
 
-const units = ["days", "hours", "minutes", "seconds", "ms"] as const;
-const unitLabels: Record<(typeof units)[number], string> = {
+const units: (keyof TimeValues)[] = ["days", "hours", "minutes", "seconds", "ms"];
+const unitLabels: Record<keyof TimeValues, string> = {
   days: "D",
   hours: "H",
   minutes: "M",
@@ -48,17 +42,15 @@ export function ClockPanel({
       <div className="flex items-center gap-1 sm:gap-2">
         {units.map((unit, i) => (
           <div key={unit} className="flex items-center gap-1 sm:gap-2">
-            {/* Separator */}
             {i > 0 && (
               <span
                 className="pb-4 text-sm font-bold text-green-950/30 sm:pb-5 sm:text-lg"
                 aria-hidden="true"
               >
-                :
+                {":"}
               </span>
             )}
 
-            {/* Time digit box */}
             <div className="flex flex-col items-center gap-1">
               <span className="flex h-9 w-9 items-center justify-center rounded-md border border-black/[0.08] bg-black/[0.12] text-sm font-bold tabular-nums text-green-950 sm:h-12 sm:w-12 sm:rounded-lg sm:text-xl md:h-14 md:w-14 md:text-2xl">
                 {time[unit]}
