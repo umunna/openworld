@@ -2,16 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  *,
-  ::after,
-  ::before {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-}
-
 /* ---- Grass blades ---- */
 .blade {
   position: absolute;

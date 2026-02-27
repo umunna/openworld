@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ClockPanel } from "./clock-panel";
+import { ClockPanel, type TimeValues } from "./clock-panel";
 import { Grass } from "./grass";
-import type { TimeValues } from "@/lib/types";
-import { INITIAL_TIME } from "@/lib/types";
+
+const INITIAL_TIME: TimeValues = {
+  days: "0",
+  hours: "00",
+  minutes: "00",
+  seconds: "00",
+  ms: "00",
+};
 
 function pad(n: number, d: number): string {
   return String(n).padStart(d, "0");

@@ -1,6 +1,12 @@
 "use client";
 
-import type { TimeValues } from "@/lib/types";
+export interface TimeValues {
+  days: string;
+  hours: string;
+  minutes: string;
+  seconds: string;
+  ms: string;
+}
 
 interface ClockPanelProps {
   label: string;
