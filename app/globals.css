@@ -1,177 +1,28 @@
-*,
-::after,
-::before {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  ::after,
+  ::before {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: linear-gradient(180deg, #5da9e0 0%, #87ceeb 40%, #a8d8a8 68%, #228b22 70%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow-x: hidden;
-}
-
-/* ---- Title ---- */
-.sim-title {
-  margin-top: 32px;
-  font-size: 2.5rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  color: #1a3a1a;
-  text-transform: uppercase;
-  text-shadow: 0 2px 8px rgba(255, 255, 255, 0.3);
-}
-
-/* ---- Clock panels wrapper ---- */
-.clocks-wrapper {
-  display: flex;
-  gap: 24px;
-  margin-top: 32px;
-  padding: 0 16px;
-  z-index: 2;
-}
-
-/* ---- Shared panel styles ---- */
-.clock-panel {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 16px;
-  padding: 24px 28px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
-}
-
-.clock-panel .panel-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #1a3a1a;
-  opacity: 0.7;
-}
-
-.realtime {
-  border-color: rgba(34, 139, 34, 0.4);
-}
-
-.pesudotime {
-  border-color: rgba(0, 100, 0, 0.4);
-}
-
-/* ---- Counter row ---- */
-.counter {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-/* ---- Time box ---- */
-.time-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.time-box span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 10px;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0d1f0d;
-  font-variant-numeric: tabular-nums;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.time-box label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #1a3a1a;
-  opacity: 0.6;
-}
-
-/* Separator between time-boxes */
-.counter .sep {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #1a3a1a;
-  opacity: 0.35;
-  padding-bottom: 18px;
-}
-
-/* ---- Speed control ---- */
-.speed-control {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.speed-control label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #1a3a1a;
-  opacity: 0.6;
-}
-
-.speed-control input[type="range"] {
-  width: 100px;
-  accent-color: #228b22;
-  cursor: pointer;
-}
-
-.speed-control .speed-value {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #1a3a1a;
-  min-width: 32px;
-  text-align: center;
-}
-
-/* ---- Grass container ---- */
-.grass {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 30%;
-  overflow: hidden;
-  z-index: 1;
-  pointer-events: none;
-}
-
-/* Individual grass blades */
+/* ---- Grass blades ---- */
 .blade {
   position: absolute;
   bottom: 0;
   width: 2px;
-  height: 40px;
   background: linear-gradient(to top, #006400, #32cd32);
   transform-origin: bottom center;
   animation: sway 3s ease-in-out infinite alternate;
   border-radius: 1px 1px 0 0;
 }
 
-/* Animation for swaying grass */
 @keyframes sway {
   0% {
     transform: rotate(-5deg);
@@ -181,188 +32,12 @@ body {
   }
 }
 
-/* ---- Sun ---- */
-.sun {
-  position: fixed;
-  top: 40px;
-  right: 60px;
-  width: 80px;
-  height: 80px;
-  background: radial-gradient(circle, #ffe066 30%, #ffb347 70%, transparent 100%);
-  border-radius: 50%;
-  box-shadow: 0 0 60px 20px rgba(255, 224, 102, 0.4);
-  z-index: 0;
-  pointer-events: none;
-}
-
 /* ---- Clouds ---- */
-.cloud {
-  position: fixed;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 50px;
-  z-index: 0;
-  pointer-events: none;
-  animation: drift linear infinite;
-}
-
-.cloud-1 {
-  top: 60px;
-  left: -160px;
-  width: 160px;
-  height: 48px;
-  animation-duration: 45s;
-}
-
-.cloud-2 {
-  top: 120px;
-  left: -120px;
-  width: 120px;
-  height: 36px;
-  opacity: 0.5;
-  animation-duration: 60s;
-  animation-delay: 10s;
-}
-
-.cloud-3 {
-  top: 30px;
-  left: -200px;
-  width: 200px;
-  height: 54px;
-  opacity: 0.6;
-  animation-duration: 55s;
-  animation-delay: 25s;
-}
-
 @keyframes drift {
   from {
-    transform: translateX(0);
+    transform: translateX(-100%);
   }
   to {
-    transform: translateX(calc(100vw + 250px));
-  }
-}
-
-/* ==============================
-   RESPONSIVE: Tablets (<=768px)
-   ============================== */
-@media (max-width: 768px) {
-  .sim-title {
-    font-size: 1.75rem;
-    margin-top: 24px;
-  }
-
-  .clocks-wrapper {
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 24px;
-  }
-
-  .clock-panel {
-    padding: 20px 20px;
-  }
-
-  .time-box span {
-    width: 48px;
-    height: 48px;
-    font-size: 1.25rem;
-    border-radius: 8px;
-  }
-
-  .counter {
-    gap: 6px;
-  }
-
-  .sun {
-    width: 60px;
-    height: 60px;
-    top: 24px;
-    right: 30px;
-  }
-}
-
-/* ==============================
-   RESPONSIVE: Phones (<=480px)
-   ============================== */
-@media (max-width: 480px) {
-  .sim-title {
-    font-size: 1.35rem;
-    margin-top: 16px;
-    letter-spacing: 0.1em;
-  }
-
-  .clocks-wrapper {
-    gap: 12px;
-    margin-top: 16px;
-    padding: 0 10px;
-  }
-
-  .clock-panel {
-    padding: 14px 12px;
-    border-radius: 12px;
-    gap: 10px;
-  }
-
-  .clock-panel .panel-label {
-    font-size: 0.65rem;
-  }
-
-  .time-box span {
-    width: 40px;
-    height: 40px;
-    font-size: 1rem;
-    border-radius: 6px;
-  }
-
-  .time-box label {
-    font-size: 0.55rem;
-  }
-
-  .counter {
-    gap: 4px;
-  }
-
-  .counter .sep {
-    font-size: 1rem;
-    padding-bottom: 14px;
-  }
-
-  .speed-control input[type="range"] {
-    width: 80px;
-  }
-
-  .sun {
-    width: 46px;
-    height: 46px;
-    top: 16px;
-    right: 16px;
-    box-shadow: 0 0 30px 10px rgba(255, 224, 102, 0.3);
-  }
-
-  .cloud-1 {
-    width: 100px;
-    height: 30px;
-  }
-  .cloud-2 {
-    width: 80px;
-    height: 24px;
-  }
-  .cloud-3 {
-    width: 130px;
-    height: 36px;
-  }
-}
-
-/* ==============================
-   RESPONSIVE: Very small (<=360px)
-   ============================== */
-@media (max-width: 360px) {
-  .time-box span {
-    width: 34px;
-    height: 34px;
-    font-size: 0.85rem;
-  }
-
-  .clock-panel {
-    padding: 10px 8px;
+    transform: translateX(calc(100vw + 100%));
   }
 }

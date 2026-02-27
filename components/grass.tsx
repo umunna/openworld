@@ -9,6 +9,7 @@ export function Grass() {
     const container = containerRef.current;
     if (!container) return;
 
+    // Fewer blades on mobile for performance
     const isMobile = window.innerWidth < 600;
     const bladeCount = isMobile ? 400 : 1000;
 
@@ -26,5 +27,11 @@ export function Grass() {
     };
   }, []);
 
-  return <div className="grass" ref={containerRef} aria-hidden="true" />;
+  return (
+    <div
+      className="pointer-events-none fixed bottom-0 left-0 z-[1] h-[30%] w-full overflow-hidden"
+      ref={containerRef}
+      aria-hidden="true"
+    />
+  );
 }
