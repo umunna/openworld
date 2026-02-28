@@ -2,17 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ---- Grass blades ---- */
-.blade {
-  position: absolute;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to top, #006400, #32cd32);
-  transform-origin: bottom center;
-  animation: sway 3s ease-in-out infinite alternate;
-  border-radius: 1px 1px 0 0;
-}
-
+/* ---- Grass sway animation ---- */
 @keyframes sway {
   0% {
     transform: rotate(-5deg);
@@ -22,12 +12,32 @@
   }
 }
 
-/* ---- Clouds ---- */
+.animate-sway {
+  animation: sway 3s ease-in-out infinite alternate;
+}
+
+/* ---- Cloud drift animation ---- */
 @keyframes drift {
   from {
-    transform: translateX(-100%);
+    transform: translateX(0);
   }
   to {
-    transform: translateX(calc(100vw + 100%));
+    transform: translateX(calc(100vw + 250px));
   }
+}
+
+.animate-drift {
+  animation: drift linear infinite;
+}
+
+/* ---- Scrollbar for event log ---- */
+.event-log::-webkit-scrollbar {
+  width: 4px;
+}
+.event-log::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+.event-log::-webkit-scrollbar-track {
+  background: transparent;
 }
