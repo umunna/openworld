@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Sim",
-  description: "Open world simulation with real-time and pseudo-time clocks",
+  title: "The Watcher - Village God Game",
+  description: "Control seasons, weather, and time to guide a village from a lone hut to a thriving settlement.",
 };
 
 export const viewport: Viewport = {
