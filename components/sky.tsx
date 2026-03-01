@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useEffect } from "react";
 import type { Season, Weather } from "@/lib/game-engine";
 
 interface SkyProps {
@@ -43,15 +43,19 @@ export function Sky({ season, weather }: SkyProps) {
   const grassColor = GRASS_COLORS[season];
   const cloudColor = CLOUD_COLORS[season];
 
-  // Generate grass blades once per season
-  const blades = useMemo(() => {
+  // Generate grass blades client-side only to avoid hydration mismatch
+  const [blades, setBlades] = useState<{ id: number; left: number; height: number; delay: string }[]>([]);
+
+  useEffect(() => {
     const count = isWinter ? 300 : 600;
-    return Array.from({ length: count }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      height: 30 + Math.random() * 80,
-      delay: (Math.random() * 2).toFixed(2),
-    }));
+    setBlades(
+      Array.from({ length: count }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        height: 30 + Math.random() * 80,
+        delay: (Math.random() * 2).toFixed(2),
+      }))
+    );
   }, [isWinter]);
 
   return (
