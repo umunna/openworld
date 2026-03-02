@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type {
   Season,
   Weather,
@@ -7,7 +8,7 @@ import type {
   BuildingType,
   GameEvent,
 } from "@/lib/game-engine";
-import { getBuildingCost, canAfford } from "@/lib/game-engine";
+import { getBuildingCost, canAfford, MILESTONES, BUILDING_DESCRIPTIONS } from "@/lib/game-engine";
 import { useEffect, useRef } from "react";
 
 interface HudProps {
@@ -15,26 +16,27 @@ interface HudProps {
   weather: Weather;
   resources: Resources;
   speed: number;
-  pseudoDays: number;
+  day: number;
   events: GameEvent[];
+  completedMilestones: Set<string>;
   onSeasonChange: (s: Season) => void;
   onWeatherChange: (w: Weather) => void;
   onSpeedChange: (s: number) => void;
   onBuild: (type: BuildingType) => void;
 }
 
-const SEASONS: { key: Season; label: string; color: string; icon: string }[] = [
-  { key: "spring", label: "Spring", color: "bg-emerald-600 hover:bg-emerald-700", icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" },
-  { key: "summer", label: "Summer", color: "bg-amber-500 hover:bg-amber-600", icon: "M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 000-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z" },
-  { key: "autumn", label: "Autumn", color: "bg-orange-600 hover:bg-orange-700", icon: "M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.71c.29.26.6.5.94.7L5.71 25h2.09l1.89-5.38C10.96 20.47 12.42 21 14 21c2.49 0 4.63-1.46 5.65-3.58C22.47 16.18 25 13.05 25 8H17z" },
-  { key: "winter", label: "Winter", color: "bg-sky-500 hover:bg-sky-600", icon: "M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z" },
+const SEASONS: { key: Season; label: string; color: string }[] = [
+  { key: "spring", label: "Spring", color: "bg-emerald-600 hover:bg-emerald-700" },
+  { key: "summer", label: "Summer", color: "bg-amber-500 hover:bg-amber-600" },
+  { key: "autumn", label: "Autumn", color: "bg-orange-600 hover:bg-orange-700" },
+  { key: "winter", label: "Winter", color: "bg-sky-500 hover:bg-sky-600" },
 ];
 
 const WEATHERS: { key: Weather; label: string; color: string }[] = [
   { key: "clear", label: "Clear", color: "bg-sky-400 hover:bg-sky-500" },
   { key: "rain", label: "Rain", color: "bg-blue-600 hover:bg-blue-700" },
   { key: "snow", label: "Snow", color: "bg-slate-300 hover:bg-slate-400 text-slate-800" },
-  { key: "storm", label: "Storm", color: "bg-violet-700 hover:bg-violet-800" },
+  { key: "storm", label: "Storm", color: "bg-indigo-700 hover:bg-indigo-800" },
 ];
 
 const BUILDINGS: { key: BuildingType; label: string }[] = [
@@ -44,12 +46,18 @@ const BUILDINGS: { key: BuildingType; label: string }[] = [
   { key: "market", label: "Market" },
 ];
 
-function ResourceBadge({ label, value, icon }: { label: string; value: string; icon: string }) {
+const EVENT_COLORS: Record<GameEvent["type"], string> = {
+  story: "text-white/80",
+  flavor: "text-white/60 italic",
+  warning: "text-red-300",
+  milestone: "text-amber-300 font-bold",
+};
+
+function ResourceBadge({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="flex items-center gap-1.5 rounded-lg bg-black/20 px-2.5 py-1.5 text-xs sm:text-sm">
-      <span className="opacity-70">{icon}</span>
-      <span className="font-bold tabular-nums">{value}</span>
-      <span className="hidden opacity-50 sm:inline">{label}</span>
+      <span className={`font-bold ${color}`}>{label}</span>
+      <span className="font-bold tabular-nums text-white">{value}</span>
     </div>
   );
 }
@@ -67,14 +75,16 @@ export function Hud({
   weather,
   resources,
   speed,
-  pseudoDays,
+  day,
   events,
+  completedMilestones,
   onSeasonChange,
   onWeatherChange,
   onSpeedChange,
   onBuild,
 }: HudProps) {
   const logRef = useRef<HTMLDivElement>(null);
+  const [showMilestones, setShowMilestones] = useState(false);
 
   useEffect(() => {
     if (logRef.current) {
@@ -82,127 +92,183 @@ export function Hud({
     }
   }, [events]);
 
+  // Find the next uncompleted milestone
+  const nextMilestone = MILESTONES.find((m) => !completedMilestones.has(m.id));
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col gap-2 p-2 sm:p-3">
-      {/* Event log */}
-      {events.length > 0 && (
-        <div
-          ref={logRef}
-          className="mx-auto flex max-h-20 w-full max-w-2xl flex-col gap-0.5 overflow-y-auto rounded-lg bg-black/30 px-3 py-2 backdrop-blur-md sm:max-h-24"
-        >
-          {events.slice(-15).map((e) => (
-            <p key={e.id} className="text-[11px] leading-tight text-white/80 sm:text-xs">
-              <span className="mr-1 opacity-40">Day {Math.floor(e.timestamp / 86400000)}</span>
-              {e.text}
-            </p>
-          ))}
+    <>
+      {/* Top-left: Current objective */}
+      {nextMilestone && (
+        <div className="fixed top-3 left-3 z-50 flex items-center gap-2 rounded-xl border border-white/15 bg-black/40 px-3 py-2 backdrop-blur-md sm:top-4 sm:left-4 sm:px-4 sm:py-2.5">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/80 sm:text-xs">
+              Objective
+            </span>
+            <span className="text-xs font-bold text-white sm:text-sm">{nextMilestone.title}</span>
+            <span className="text-[10px] text-white/50 sm:text-xs">{nextMilestone.description}</span>
+          </div>
         </div>
       )}
 
-      {/* Main HUD bar */}
-      <div className="mx-auto w-full max-w-4xl rounded-2xl border border-white/20 bg-black/40 px-3 py-2.5 backdrop-blur-xl sm:px-5 sm:py-3">
-        <div className="flex flex-col gap-2.5 sm:gap-3">
+      {/* Top-right: Milestone counter button */}
+      <button
+        onClick={() => setShowMilestones(!showMilestones)}
+        className="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-white backdrop-blur-md transition-all hover:bg-black/50 sm:top-4 sm:right-4 sm:px-4 sm:py-2.5"
+      >
+        <span className="text-xs font-bold tabular-nums text-amber-300 sm:text-sm">
+          {completedMilestones.size}/{MILESTONES.length}
+        </span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:text-xs">
+          Milestones
+        </span>
+      </button>
 
-          {/* Row 1: Resources + Day counter */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5 text-white sm:gap-2">
-              <ResourceBadge icon="F" label="Food" value={Math.floor(resources.food).toString()} />
-              <ResourceBadge icon="W" label="Wood" value={Math.floor(resources.wood).toString()} />
-              <ResourceBadge icon="G" label="Gold" value={Math.floor(resources.gold).toString()} />
-              <ResourceBadge icon="P" label="Pop" value={resources.population.toString()} />
-            </div>
-            <div className="flex items-center gap-2 text-white">
-              <span className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-bold tabular-nums sm:text-sm">
-                Day {pseudoDays}
-              </span>
-            </div>
+      {/* Milestone panel */}
+      {showMilestones && (
+        <div className="fixed top-14 right-3 z-50 w-64 rounded-xl border border-white/15 bg-black/60 p-4 backdrop-blur-xl sm:top-16 sm:right-4 sm:w-72">
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-white/60">
+            Milestones
+          </h3>
+          <div className="flex flex-col gap-1.5">
+            {MILESTONES.map((m) => {
+              const done = completedMilestones.has(m.id);
+              return (
+                <div key={m.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs sm:text-sm ${done ? "bg-amber-400/10" : "bg-white/5"}`}>
+                  <span className={`text-sm ${done ? "text-amber-400" : "text-white/20"}`}>
+                    {done ? "x" : "o"}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className={`font-bold ${done ? "text-amber-300" : "text-white/50"}`}>{m.title}</span>
+                    <span className={`text-[10px] ${done ? "text-white/50" : "text-white/30"}`}>{m.description}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        </div>
+      )}
 
-          {/* Row 2: Season + Weather + Build + Speed */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+      {/* Bottom HUD */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col gap-2 p-2 sm:p-3">
+        {/* Event log */}
+        {events.length > 0 && (
+          <div
+            ref={logRef}
+            className="mx-auto flex max-h-20 w-full max-w-2xl flex-col gap-0.5 overflow-y-auto rounded-lg bg-black/30 px-3 py-2 backdrop-blur-md sm:max-h-24"
+          >
+            {events.slice(-12).map((e) => (
+              <p key={e.id} className={`text-[11px] leading-tight sm:text-xs ${EVENT_COLORS[e.type]}`}>
+                <span className="mr-1.5 text-white/30">Day {e.day}</span>
+                {e.text}
+              </p>
+            ))}
+          </div>
+        )}
 
-            {/* Seasons */}
-            <div className="flex items-center gap-1">
-              {SEASONS.map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => onSeasonChange(s.key)}
-                  className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition-all sm:px-2.5 sm:text-xs ${
-                    s.color
-                  } ${season === s.key ? "ring-2 ring-white/60 scale-105" : "opacity-60"}`}
-                  title={s.label}
-                >
-                  {s.label}
-                </button>
-              ))}
+        {/* Main HUD bar */}
+        <div className="mx-auto w-full max-w-4xl rounded-2xl border border-white/20 bg-black/40 px-3 py-2.5 backdrop-blur-xl sm:px-5 sm:py-3">
+          <div className="flex flex-col gap-2.5 sm:gap-3">
+
+            {/* Row 1: Resources + Day counter */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <ResourceBadge label="Food" value={Math.floor(resources.food).toString()} color="text-green-400" />
+                <ResourceBadge label="Wood" value={Math.floor(resources.wood).toString()} color="text-amber-600" />
+                <ResourceBadge label="Gold" value={Math.floor(resources.gold).toString()} color="text-yellow-300" />
+                <ResourceBadge label="Pop" value={resources.population.toString()} color="text-sky-300" />
+              </div>
+              <div className="flex items-center gap-2 text-white">
+                <span className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-bold tabular-nums sm:text-sm">
+                  Day {day}
+                </span>
+              </div>
             </div>
 
-            {/* Divider */}
-            <div className="hidden h-6 w-px bg-white/20 sm:block" />
+            {/* Row 2: Season + Weather + Build + Speed */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
 
-            {/* Weather */}
-            <div className="flex items-center gap-1">
-              {WEATHERS.map((w) => (
-                <button
-                  key={w.key}
-                  onClick={() => onWeatherChange(w.key)}
-                  className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition-all sm:px-2.5 sm:text-xs ${
-                    w.color
-                  } ${weather === w.key ? "ring-2 ring-white/60 scale-105" : "opacity-60"}`}
-                  title={w.label}
-                >
-                  {w.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Divider */}
-            <div className="hidden h-6 w-px bg-white/20 sm:block" />
-
-            {/* Build */}
-            <div className="flex items-center gap-1">
-              {BUILDINGS.map((b) => {
-                const affordable = canAfford(resources, getBuildingCost(b.key));
-                return (
+              {/* Seasons */}
+              <div className="flex items-center gap-1">
+                {SEASONS.map((s) => (
                   <button
-                    key={b.key}
-                    onClick={() => affordable && onBuild(b.key)}
-                    disabled={!affordable}
-                    className={`flex flex-col items-center rounded-lg bg-white/10 px-2 py-1 text-white transition-all hover:bg-white/20 sm:px-2.5 ${
-                      !affordable ? "cursor-not-allowed opacity-30" : ""
-                    }`}
-                    title={`Build ${b.label}`}
+                    key={s.key}
+                    onClick={() => onSeasonChange(s.key)}
+                    className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition-all sm:px-2.5 sm:text-xs ${
+                      s.color
+                    } ${season === s.key ? "ring-2 ring-white/60 scale-105" : "opacity-60"}`}
                   >
-                    <span className="text-[10px] font-bold sm:text-xs">{b.label}</span>
-                    <CostTag type={b.key} />
+                    {s.label}
                   </button>
-                );
-              })}
-            </div>
+                ))}
+              </div>
 
-            {/* Divider */}
-            <div className="hidden h-6 w-px bg-white/20 sm:block" />
+              <div className="hidden h-6 w-px bg-white/20 sm:block" />
 
-            {/* Speed */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:text-xs">
-                Speed
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={speed}
-                onChange={(e) => onSpeedChange(parseInt(e.target.value, 10))}
-                className="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-white/20 accent-emerald-400 sm:w-24"
-              />
-              <span className="min-w-[28px] text-center text-[10px] font-bold tabular-nums text-white sm:text-xs">
-                {speed === 0 ? "II" : `${speed}x`}
-              </span>
+              {/* Weather */}
+              <div className="flex items-center gap-1">
+                {WEATHERS.map((w) => (
+                  <button
+                    key={w.key}
+                    onClick={() => onWeatherChange(w.key)}
+                    className={`rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition-all sm:px-2.5 sm:text-xs ${
+                      w.color
+                    } ${weather === w.key ? "ring-2 ring-white/60 scale-105" : "opacity-60"}`}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="hidden h-6 w-px bg-white/20 sm:block" />
+
+              {/* Build */}
+              <div className="flex items-center gap-1">
+                {BUILDINGS.map((b) => {
+                  const affordable = canAfford(resources, getBuildingCost(b.key));
+                  return (
+                    <button
+                      key={b.key}
+                      onClick={() => affordable && onBuild(b.key)}
+                      disabled={!affordable}
+                      className={`group relative flex flex-col items-center rounded-lg bg-white/10 px-2 py-1 text-white transition-all hover:bg-white/20 sm:px-2.5 ${
+                        !affordable ? "cursor-not-allowed opacity-30" : ""
+                      }`}
+                      title={BUILDING_DESCRIPTIONS[b.key]}
+                    >
+                      <span className="text-[10px] font-bold sm:text-xs">{b.label}</span>
+                      <CostTag type={b.key} />
+                      {/* Tooltip */}
+                      <span className="pointer-events-none absolute -top-8 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-black/80 px-2 py-1 text-[10px] text-white/70 group-hover:block">
+                        {BUILDING_DESCRIPTIONS[b.key]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="hidden h-6 w-px bg-white/20 sm:block" />
+
+              {/* Speed */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:text-xs">
+                  Speed
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={50}
+                  value={speed}
+                  onChange={(e) => onSpeedChange(parseInt(e.target.value, 10))}
+                  className="h-1.5 w-16 cursor-pointer appearance-none rounded-full bg-white/20 accent-emerald-400 sm:w-24"
+                />
+                <span className="min-w-[28px] text-center text-[10px] font-bold tabular-nums text-white sm:text-xs">
+                  {speed === 0 ? "II" : `${speed}x`}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

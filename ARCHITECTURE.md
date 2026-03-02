@@ -1,6 +1,6 @@
 # The Watcher -- Architecture & Review
 
-> Last updated with a full audit of every file in the project.
+> Last updated after gameplay overhaul: intro screen, milestones, day-based ticking, victory condition.
 
 ---
 
@@ -13,13 +13,13 @@
     layout.tsx            -- Root layout: Inter font, metadata, viewport
     page.tsx              -- Entry point: renders <Game />
   components/
-    game.tsx              -- Main orchestrator: state, rAF game loop, event wiring
-    hud.tsx               -- Bottom HUD: resources, season/weather/build controls, speed, event log
+    game.tsx              -- Main orchestrator: intro/playing/victory phases, day-based rAF loop, milestone checks
+    hud.tsx               -- Bottom HUD: resources, controls, event log, milestone tracker + objective display
     sky.tsx               -- Season-aware background: gradients, sun/moon, clouds, grass blades
     village.tsx           -- Building sprites on the grass line (hut, farm, mill, market)
     weather-canvas.tsx    -- Full-screen <canvas> particle system (rain, snow, storm, leaves)
   lib/
-    game-engine.ts        -- Pure functions: types, resource ticks, costs, multipliers, events
+    game-engine.ts        -- Types, milestones, resource ticks (per-day), costs, multipliers, day events
   next.config.mjs         -- Empty Next.js config
   package.json            -- Next 16, React 19, Tailwind 3
   postcss.config.mjs      -- Standard Tailwind + Autoprefixer
@@ -29,135 +29,140 @@
 
 ---
 
+## Game Design
+
+**Storyline: "The Watcher"**
+You are a god overseeing a patch of earth. One hut, three settlers. Control seasons, weather, and construction to grow the village to 50 population.
+
+**Three phases:**
+1. **Intro** -- Story overlay explaining controls and goal. Click "Begin" to start.
+2. **Playing** -- Real-time god game. Days tick based on pseudo-time speed.
+3. **Victory** -- Reached 50 population. Shows stats. "Play Again" restarts.
+
+**10 Milestones (progressive goals):**
+1. Till the Earth (build first farm)
+2. Growing Community (5 pop)
+3. Saw & Timber (build lumber mill)
+4. Open for Trade (build market)
+5. Small Village (10 pop)
+6. Through the Frost (reach day 30)
+7. Thriving Settlement (20 pop)
+8. Prosperous (100 gold)
+9. Master Builder (10 buildings)
+10. The Watcher's Triumph (50 pop -- win!)
+
+**Current objective** always shown top-left. Milestone panel toggleable top-right.
+
+---
+
 ## Data Flow
 
 ```
 page.tsx
   -> Game (client component, owns ALL state)
        |
-       |-- season, weather, speed, resources, buildings, events, pseudoMs
+       |-- phase: "intro" | "playing" | "victory"
+       |-- season, weather, speed, resources, buildings, events, day
+       |-- completedMilestones: Set<string>
        |
-       |-- requestAnimationFrame loop:
-       |     1. Calculates pseudoDelta = realDelta * speed
-       |     2. Accumulates pseudo-ms, fires resource tick per pseudo-second
-       |     3. Calls calculateTick() from game-engine (pure function)
-       |     4. Calls generateEvent() for flavor text
+       |-- rAF loop (only runs in "playing" phase):
+       |     1. Accumulates realDelta * speed
+       |     2. Every 3000ms of pseudo-time = 1 day
+       |     3. Calls calculateDayTick() once per day (not per frame)
+       |     4. Calls generateDayEvents() once per day
+       |     5. Day counter increments
        |
-       |-- Renders:
-       |     <Sky season weather />
-       |     <WeatherCanvas weather season />
-       |     <Village buildings season />
-       |     <Hud season weather resources speed pseudoDays events callbacks />
+       |-- useEffect checks milestones on resources/buildings/day changes
+       |     -> Fires milestone events into log
+       |     -> Triggers victory phase on "pop-50"
+       |
+       |-- Renders per phase:
+       |     intro:   <Sky /> + overlay with story + "Begin" button
+       |     playing: <Sky /> + <WeatherCanvas /> + <Village /> + <Hud />
+       |     victory: <Sky /> + <Village /> + overlay with stats + "Play Again"
 ```
 
-All state is in `game.tsx`. Child components are pure renderers that receive props.
+---
+
+## Key Changes from Previous Version
+
+| Before | After |
+|--------|-------|
+| Resources ticked per pseudo-second (60x per real second at speed 10) | Resources tick once per pseudo-day (every 3s real at 1x, 300ms at 10x) |
+| Events fired 8% chance per tick (spam) | Events fire once per day, meaningful categories |
+| No intro, no goals, no direction | Intro screen, 10 milestones, victory condition |
+| All events showed "Day 0" | Day counter increments properly, events tagged by day |
+| Event log was single color | 4 event types: story (white), flavor (gray italic), warning (red), milestone (gold bold) |
+| Speed went to 100x (insane tick rate) | Speed capped at 50x |
+| No way to understand buildings | Tooltips on build buttons explain what each does |
+| `generateEvent` used `Date.now()` for IDs | Uses `day` + random suffix for unique, readable IDs |
+| `pseudoMs` state updated every frame (60 re-renders/s) | Only `day` is state; no per-frame state updates |
 
 ---
 
-## Known Issues & Improvement Areas
+## Remaining Issues
 
-### 1. STALE STATE IN rAF LOOP (HIGH)
+### 1. NESTED setState IN handleBuild (MEDIUM)
 
-**File:** `game.tsx` lines 40-44, 48-86
+**File:** `game.tsx` handleBuild callback
 
-**Problem:** The game loop runs inside a `useEffect([], [])` (mount-only) and uses a `stateRef` to read latest state. This works but has a subtle race:
-- `setResources()` uses a functional updater `(prev) => ...` which is correct.
-- BUT inside that updater, `setBuildings()` is called -- this is a **nested setState call inside another setState updater**. React batches these, but it is an anti-pattern. If two builds happen in the same frame, the second `setBuildings` call could overwrite the first.
+`setResources()` functional updater calls `setBuildings()` inside it. React batches these but it's an anti-pattern. Rapid builds could lose a building.
 
-**Fix:** Move building placement out of the `setResources` updater. Use a separate handler that first checks affordability from a ref, then calls `setResources` and `setBuildings` sequentially.
+**Fix:** Check affordability from a ref, then call `setResources` and `setBuildings` separately.
 
 ---
 
-### 2. PSEUDO-TIME AS STATE + REF SYNC (MEDIUM)
+### 2. GRASS BLADE DOM COUNT (MEDIUM)
 
-**File:** `game.tsx` lines 33, 42
+**File:** `sky.tsx`
 
-**Problem:** `pseudoMs` is React state AND is read from `stateRef.current.pseudoMs` inside the rAF loop. Every frame calls `setPseudoMs(newPseudoMs)` which triggers a re-render on every animation frame. At 60fps this is 60 re-renders/second.
+600 animated DOM nodes for grass. Works on desktop, could cause jank on low-end mobile.
 
-**Fix:** Keep `pseudoMs` only in a ref. Derive the displayed `pseudoDays` in a second `useState` that updates once per pseudo-day (every 86400 pseudo-seconds) instead of every frame. Or use a separate `requestAnimationFrame`-driven display ticker that reads from the ref.
-
----
-
-### 3. GRASS BLADE COUNT (MEDIUM)
-
-**File:** `sky.tsx` lines 53-64
-
-**Problem:** 600 DOM elements (or 300 in winter) for grass blades. Each is an absolutely positioned `<div>` with a CSS animation. On low-end mobile devices this could cause jank. The `useEffect` regenerates all blades when `isWinter` changes, which is correct but causes a flash of empty grass during the transition.
-
-**Fix options:**
-- Render grass blades on a `<canvas>` like the weather particles, eliminating 600 DOM nodes.
-- Or keep DOM blades but reduce count further on mobile by checking `window.innerWidth` in the effect.
-- For the transition flash: cross-fade two blade sets instead of replacing in-place.
+**Fix:** Render grass on a canvas, or reduce to 200 on mobile with a width check.
 
 ---
 
-### 4. NO BUILDING LIMIT OR PLACEMENT VALIDATION (LOW-MEDIUM)
+### 3. BUILDING OVERLAP (LOW-MEDIUM)
 
-**File:** `game.tsx` line 95 and `village.tsx`
+**File:** `game.tsx` handleBuild, `village.tsx`
 
-**Problem:** Buildings are placed at `10 + Math.random() * 80` percent -- they can overlap each other. There is no cap on total buildings. With enough resources a player can spam 50+ markets and the landscape becomes unreadable.
+Buildings placed at random X positions with no overlap check. 20+ buildings become unreadable.
 
-**Fix:** Add a max-building-count per type (e.g., huts: 10, farms: 8, mills: 5, markets: 3). Add minimum distance checking between `x` positions. Show a "No space!" event if placement fails.
-
----
-
-### 5. EVENT LOG NOT USING CSS CLASS (LOW)
-
-**File:** `hud.tsx` line 78, `globals.css` lines 37-45
-
-**Problem:** `globals.css` defines an `.event-log` scrollbar style, but the event log `<div>` in `hud.tsx` does not apply that class. The custom scrollbar styles are dead CSS.
-
-**Fix:** Add `className="... event-log"` to the event log wrapper in `hud.tsx`.
+**Fix:** Add min-distance checking between X positions. Cap building count per type.
 
 ---
 
-### 6. HUD SVG ICON PATHS NEVER RENDERED (LOW)
+### 4. `text-foreground` WITHOUT CSS VARIABLE (LOW)
 
-**File:** `hud.tsx` lines 29-32
+**File:** `village.tsx`
 
-**Problem:** Each season in the `SEASONS` array has an `icon` property containing an SVG path string, but it is never used in the render. The buttons only show text labels.
+Uses `text-foreground/60` but no `--foreground` variable is defined.
 
-**Fix:** Either render the SVG paths as inline `<svg>` icons next to the labels, or remove the unused `icon` fields to reduce dead code.
-
----
-
-### 7. `text-foreground` WITHOUT CSS VARIABLE (LOW)
-
-**File:** `village.tsx` -- multiple lines use `text-foreground/60`
-
-**Problem:** The Tailwind class `text-foreground` requires a `--foreground` CSS variable defined in `globals.css` or the Tailwind config. This project has neither. The class silently fails and the text inherits whatever color is available (likely black), which accidentally works but is fragile.
-
-**Fix:** Add `--foreground` to globals.css or replace with explicit `text-neutral-800/60`.
+**Fix:** Replace with `text-neutral-800/60` or add the CSS variable.
 
 ---
 
-### 8. WEATHER + SEASON INDEPENDENCE (DESIGN CONSIDERATION)
+### 5. EVENT LOG SCROLLBAR CLASS (LOW)
 
-**Current behavior:** The god can set any weather in any season (snow in summer, storms in spring, etc.). This is by design ("full control, mini god").
+**File:** `hud.tsx`, `globals.css`
 
-**Consideration:** There are no consequences or bonuses for thematic combos. Rain in spring could boost crop growth extra. Snow in summer could cause a plague event. This would add strategic depth.
+`globals.css` defines `.event-log` scrollbar styles but the HUD div doesn't use that class.
 
----
-
-### 9. NO SAVE/LOAD (FUTURE)
-
-**Current:** All game state is ephemeral -- refreshing the page resets everything. For a god game this is expected in an MVP, but longer sessions would benefit from persistence.
-
-**Options:** `localStorage` for quick saves, or a database integration (Supabase/Neon) for persistent worlds.
+**Fix:** Add `event-log` to the log wrapper className.
 
 ---
 
-### 10. POPULATION LOGIC (BALANCE)
+### 6. NO SAVE/LOAD (FUTURE)
 
-**File:** `game-engine.ts` lines 107-121
+All state is ephemeral. Refresh = reset. Fine for MVP.
 
-**Observations:**
-- Population can only grow by 1 per tick (resource tick = 1 pseudo-second). At speed 1x, reaching 20 pop takes a long time even in ideal conditions.
-- `growthChance` in winter is 0.005 (0.5%) per tick -- this is fine but slow.
-- Starvation kills at 5% chance per tick when food = 0. At speed 100x, 100 ticks fire per second, so starvation is essentially guaranteed in 1 real second. This might feel sudden to the player.
-- `maxPop = huts * 4`: the starting hut supports 4 people. Building more huts is critical early.
+**Options:** localStorage for quick saves, or database integration for persistent worlds.
 
-**Balance suggestion:** Show a warning event when food drops below 10. Add a "famine grace period" of 3-5 pseudo-seconds before starvation begins.
+---
+
+### 7. SEASON/WEATHER COMBOS (FUTURE DEPTH)
+
+Rain in spring could give a crop bonus. Snow in summer could trigger a plague. Currently no special combo logic exists.
 
 ---
 
@@ -165,22 +170,23 @@ All state is in `game.tsx`. Child components are pure renderers that receive pro
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Separation of concerns | Good | Engine is pure, components are renderers, game.tsx orchestrates |
-| Type safety | Good | All types exported from game-engine, props are typed |
-| Responsiveness | Good | sm: breakpoints throughout HUD and village sprites |
-| Performance | Fair | 600 DOM grass blades + 60fps setState are the two bottlenecks |
-| Accessibility | Fair | aria-hidden on decorative elements, but HUD buttons lack aria-labels |
-| Code reuse | Good | BuildingSprite switch, ResourceBadge, CostTag are extracted |
-| State management | Fair | Works but the nested-setState and per-frame re-render need addressing |
+| Game direction | Good | Intro, 10 milestones, win condition, clear objectives |
+| Event pacing | Good | Day-based, categorized, no spam |
+| Separation of concerns | Good | Engine is pure, components are renderers |
+| Type safety | Good | All types exported from game-engine |
+| Responsiveness | Good | sm: breakpoints throughout |
+| Performance | Fair | 600 DOM grass blades is the main bottleneck |
+| Accessibility | Fair | aria-hidden on decoratives, but buttons lack aria-labels |
+| State management | Fair | Works but nested setState in handleBuild is fragile |
 
 ---
 
-## Quick Priority List
+## Priority List
 
-1. Fix nested setState in `game.tsx` handleBuild
-2. Throttle `pseudoMs` re-renders (use ref + derived state)
-3. Add `event-log` class to HUD scroll container
-4. Add `--foreground` CSS variable or replace `text-foreground`
-5. Remove or render the unused SVG icon paths in HUD
-6. Add building placement limits and overlap prevention
-7. Consider canvas-based grass for mobile performance
+1. Fix nested setState in handleBuild
+2. Add `event-log` class to HUD log wrapper
+3. Replace `text-foreground` with explicit color
+4. Add building placement limits
+5. Consider canvas grass for mobile
+6. Add season/weather combo bonuses
+7. Add save/load system
