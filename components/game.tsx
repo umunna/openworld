@@ -35,6 +35,8 @@ export function Game() {
   const lastTickRef = useRef(performance.now());
   const accumulatorRef = useRef(0);
   const rafRef = useRef(0);
+  const idRef = useRef(0);
+  const nextId = () => ++idRef.current;
 
   // Refs to always have latest state in rAF loop without re-creating it
   const stateRef = useRef({ resources, buildings, season, weather, speed, pseudoMs });
@@ -94,14 +96,14 @@ export function Game() {
       const x = 10 + Math.random() * 80;
       setBuildings((prevB) => [
         ...prevB,
-        { type, id: `${type}-${Date.now()}`, x },
+        { type, id: `${type}-${nextId()}`, x },
       ]);
 
       const newRes = subtractCost(prev, cost);
       setEvents((prevE) => [
         ...prevE.slice(-50),
         {
-          id: `build-${Date.now()}`,
+          id: `build-${nextId()}`,
           text: `A new ${type} has been erected.`,
           timestamp: stateRef.current.pseudoMs,
         },
@@ -115,7 +117,7 @@ export function Game() {
     setEvents((prev) => [
       ...prev.slice(-50),
       {
-        id: `season-${Date.now()}`,
+        id: `season-${nextId()}`,
         text: `The Watcher shifts the world to ${s}.`,
         timestamp: stateRef.current.pseudoMs,
       },
@@ -127,7 +129,7 @@ export function Game() {
     setEvents((prev) => [
       ...prev.slice(-50),
       {
-        id: `weather-${Date.now()}`,
+        id: `weather-${nextId()}`,
         text: w === "clear"
           ? "The skies clear."
           : w === "rain"
