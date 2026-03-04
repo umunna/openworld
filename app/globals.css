@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Grass sway animation ---- */
+@keyframes sway {
+  0% {
+    transform: rotate(-5deg);
+  }
+  100% {
+    transform: rotate(5deg);
+  }
+}
+
+.animate-sway {
+  animation: sway 3s ease-in-out infinite alternate;
+}
+
+/* ---- Cloud drift animation ---- */
+@keyframes drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(100vw + 250px));
+  }
+}
+
+.animate-drift {
+  animation: drift linear infinite;
+}
+
+/* ---- Scrollbar for event log ---- */
+.event-log::-webkit-scrollbar {
+  width: 4px;
+}
+.event-log::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+.event-log::-webkit-scrollbar-track {
+  background: transparent;
+}
